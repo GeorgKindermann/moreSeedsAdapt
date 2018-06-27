@@ -50,3 +50,18 @@ for(sart in unique(me$art)) {
 }
 dev.off()
 
+me$tAvg <- with(me, ave(t, paste(art,bfi,wg,hk), FUN=function(x) {mean(x)}))
+with(me[me$art=="fichte",], boxplot(t-tAvg ~ mast))
+with(me[me$art=="fichte",], boxplot(tPre-tAvg ~ mast))
+
+pdf("/tmp/mastDTemp2.pdf")
+for(sart in unique(me$art)) {
+  with(me[me$art==sart,], boxplot(tPre-tAvg ~ mast, main=sart,ylab="tPre-tAvg")); abline(h=0)
+  with(me[me$art==sart,], boxplot(t-tAvg ~ mast, main=sart,ylab="t-tAvg")); abline(h=0)
+}
+dev.off()
+
+
+
+
+
