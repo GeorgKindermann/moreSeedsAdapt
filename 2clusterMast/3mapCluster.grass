@@ -1,0 +1,38 @@
+grass #atLambert
+
+v.import input=/dat/gis/wuchsregion/tschermak/HKG_alt_TSCHERMAK_WGS84.shp output=tmp1 --overwrite
+v.import input=/dat/gis/bfi/bfi1980.shp output=tmp2 --overwrite
+r.import input=/dat/gis/dem/dem30.tif output=tmp3 --overwrite
+r.import input=/dat/gis/waldlayer/owiRst/waldBfwKnn.tiff output=tmp4 --overwrite
+
+g.region rast=tmp4
+v.to.rast input=tmp1 output=tmp1 use=attr attribute_column=OBJECTID --overwrite
+v.to.rast input=tmp2 output=tmp2 use=attr attribute_column=BFI_NR --overwrite
+r.out.xyz input=tmp1,tmp2,tmp3,tmp4 separator=' ' | cut -f 1-5 -d ' ' >/tmp/maps.txt
+#x,y,wuchsgebiet,bfi,hoehe - nur Waldpixel (tmp4)
+
+g.remove -f type=raster,vector pattern="tmp?"
+
+awk '{if($5<900){$5=0}else{if($5<1500){$5=1}else{$5=2}}} {print $3 "_" $4 "_" $5, $1, $2}' /tmp/maps.txt |sort >/tmp/smap.txt
+tail -n +2 /tmp/cluster.txt | sed 's/ /_/;s/ /_/' |sort >/tmp/sclust.txt
+join /tmp/smap.txt /tmp/sclust.txt |sed 's/NA/-1/g' >/tmp/me.txt
+join -v1 /tmp/smap.txt /tmp/sclust.txt | awk '{print $0,"NA NA"}' |sed 's/NA/-1/g' >>/tmp/me.txt
+
+BAUMARTEN=(X X X X fi bu)
+for COLUMN in {4..5}; do
+  d.mon start=png width=599 height=312 output=/tmp/pic${BAUMARTEN[$COLUMN]}.png --o
+  r.in.xyz input=/tmp/me.txt output=tmp x=2 y=3 z=$COLUMN separator=' ' --overwrite
+echo "-1 100 100 100
+1 255 0 0 
+2 255 255 0
+3 0 255 0
+4 0 255 255
+5 0 0 255
+6 255 0 255
+7 100 0 0
+8 0 100 0" | r.colors map=tmp rules=-
+  d.rast map=tmp
+  d.mon stop=png
+done
+
+g.remove -f type=raster name=tmp
